@@ -1,0 +1,28 @@
+# Security - NEVER UPLOAD API KEYS
+.env
+
+# Python Cache & Compiled Files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments (Jahan aapne pip install kiya hai)
+venv/
+.venv/
+env/
+ENV/
+
+# Editor & IDE Settings (Jaise VS Code ki settings)
+.vscode/
+.idea/
+
+# OS Generated Files (Mac & Windows junk files)
+.DS_Store
+Thumbs.db
+
+# User Uploaded Media (Agar server pe koi image save ho rahi ho temporary)
+*.jpeg
+*.jpg
+*.png
+*.webp
