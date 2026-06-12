@@ -1,28 +1,38 @@
-# Security - NEVER UPLOAD API KEYS
+# --- Python & Backend ---
 .env
-
-# Python Cache & Compiled Files
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-
-# Virtual Environments (Jahan aapne pip install kiya hai)
 venv/
 .venv/
 env/
 ENV/
 
-# Editor & IDE Settings (Jaise VS Code ki settings)
+# --- React & Frontend ---
+frontend-react/node_modules/
+frontend-react/dist/
+frontend-react/dist-ssr/
+frontend-react/*.local
+frontend-react/npm-debug.log*
+frontend-react/yarn-debug.log*
+frontend-react/yarn-error.log*
+frontend-react/pnpm-debug.log*
+
+# --- IDE & System ---
 .vscode/
 .idea/
-
-# OS Generated Files (Mac & Windows junk files)
 .DS_Store
 Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# User Uploaded Media (Agar server pe koi image save ho rahi ho temporary)
+# --- Media/Data (Important: DB aur Images ko local rakho) ---
 *.jpeg
 *.jpg
 *.png
 *.webp
+*.db
