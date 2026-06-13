@@ -1,5 +1,3 @@
-This is a professional README.md file template tailored for your Healthy India Tracker project. You can copy this directly into your GitHub repository.
-
 Healthy India Tracker 🍃
 AI-Powered Food & Ingredient Auditor
 
