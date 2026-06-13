@@ -47,7 +47,7 @@ A valid GEMINI_API_KEY from Google AI Studio
 Backend Setup
 Bash
 # Clone the repo
-git clone https://github.com/yourusername/healthy-india-tracker.git
+git clone https://github.com/sumitssr123/Food_Reality_Checker.git
 cd backend
 
 # Install dependencies
