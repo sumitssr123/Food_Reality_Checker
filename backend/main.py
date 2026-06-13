@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from io import BytesIO
 from PIL import Image
@@ -49,46 +50,71 @@ async def save_to_db(db: AsyncSession, query_type: str, goal: str, data: dict):
 async def analyze_text(food_name: str, goal: str = "General Health", mode: str = "food", db: AsyncSession = Depends(get_db)):
     try:
         data = analyze_food_engine(food_query=food_name, user_goal=goal, mode=mode)
-        if "error" in data: raise HTTPException(status_code=400, detail=data["error"])
+        
+        # 🟢 FIX 1: Send exact JSON format React expects
+        if "error" in data: 
+            return JSONResponse(status_code=400, content={"error": data["error"]})
         
         # Save to DB asynchronously
         await save_to_db(db, "text", goal, data)
         return data
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # 🟢 FIX 2: Prevent 500 crashes by safely returning the error
+        return JSONResponse(status_code=500, content={"error": f"Server Error: {str(e)}"})
 
 @app.post("/analyze/image/")
-async def analyze_image(file: UploadFile = File(...), goal: str = Form("General Health"), mode: str = Form("food"), db: AsyncSession = Depends(get_db)):
+async def analyze_image(
+    file: UploadFile = File(None), # 🟢 YAHAN FIX HAI: Made file optional (None) so Text Search works!
+    food_query: str = Form("Unknown Image Upload"),
+    goal: str = Form("General Health"), 
+    mode: str = Form("food"), 
+    db: AsyncSession = Depends(get_db)
+):
     try:
-        print(f"\n--- NEW UPLOAD STARTED ---")
-        raw_image_bytes = await file.read()
-        
-        if not raw_image_bytes:
-            raise ValueError("The uploaded image is empty.")
+        safe_image_bytes = None
+        mime_type = None
 
-        try:
-            img = Image.open(BytesIO(raw_image_bytes))
-            if img.mode != 'RGB': 
-                img = img.convert('RGB')
-            img.thumbnail((512, 512))
-            compressed_io = BytesIO()
-            img.save(compressed_io, format='JPEG', quality=70)
-            safe_image_bytes = compressed_io.getvalue()
-        except Exception as img_error:
-            raise ValueError("Failed to compress the image. Ensure it's a valid picture format.")
+        # 🟢 YAHAN FIX HAI: Logic check agar file aayi hai ya nahi
+        if file is not None and file.filename != "":
+            print(f"\n--- NEW IMAGE UPLOAD STARTED ---")
+            raw_image_bytes = await file.read()
+            
+            if raw_image_bytes:
+                try:
+                    img = Image.open(BytesIO(raw_image_bytes))
+                    if img.mode != 'RGB': 
+                        img = img.convert('RGB')
+                    img.thumbnail((512, 512))
+                    compressed_io = BytesIO()
+                    img.save(compressed_io, format='JPEG', quality=70)
+                    safe_image_bytes = compressed_io.getvalue()
+                    mime_type = "image/jpeg"
+                except Exception as img_error:
+                    return JSONResponse(status_code=400, content={"error": "Failed to compress the image. Ensure it's a valid picture format."})
+        else:
+            print(f"\n--- NEW TEXT SEARCH STARTED: {food_query} ---")
 
-        data = analyze_food_engine(user_goal=goal, image_bytes=safe_image_bytes, mime_type="image/jpeg", mode=mode)
+        # Pass data to the engine (Works for both Text and Image now)
+        data = analyze_food_engine(
+            food_query=food_query, 
+            user_goal=goal, 
+            image_bytes=safe_image_bytes, 
+            mime_type=mime_type, 
+            mode=mode
+        )
         
+        # Handle Engine Errors Gracefully
         if "error" in data: 
-            raise HTTPException(status_code=400, detail=data["error"])
+            return JSONResponse(status_code=400, content={"error": data["error"]})
             
         # Save to DB asynchronously
-        await save_to_db(db, "image", goal, data)
+        query_type = "image" if safe_image_bytes else "text"
+        await save_to_db(db, query_type, goal, data)
         return data
         
     except Exception as e:
         print(f"❌ Server Crash: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(status_code=500, content={"error": f"Internal Server Error: {str(e)}"})
     
 from sqlalchemy.future import select
 
@@ -112,4 +138,4 @@ async def get_history(db: AsyncSession = Depends(get_db)):
             })
         return {"history": history_list}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(status_code=500, content={"error": str(e)})

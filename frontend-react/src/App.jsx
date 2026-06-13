@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Search, Upload, Camera, Zap, ShieldAlert, Activity, Leaf, Target, X, Focus, Flame, CheckCircle, AlertTriangle, History, ChevronRight, Loader2 } from 'lucide-react'
+import { Search, Upload, Camera, Zap, ShieldAlert, Activity, Leaf, Target, X, Focus, Flame, CheckCircle, AlertTriangle, History, ChevronRight, Loader2, Image as ImageIcon } from 'lucide-react'
 
 // Aapke Python Backend ka address
 const API_BASE_URL = "http://127.0.0.1:8000"
@@ -17,19 +17,48 @@ function App() {
   const [historyData, setHistoryData] = useState([])
   const [analysisResult, setAnalysisResult] = useState(null)
 
+  // NEW: Image Preview States
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState(null)
+
+  // NEW: Creative Loading Messages State
+  const loadingMessages = [
+    "Consulting the Digital Dietitian 🧑‍⚕️...",
+    "Scanning for hidden sugars & toxins 🔍...",
+    "Calculating macros & micronutrients 🧬...",
+    "Evaluating goal alignment 🎯...",
+    "Extracting biological benefits 🌿..."
+  ]
+  const [loadingText, setLoadingText] = useState(loadingMessages[0])
+
   // Refs
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const canvasRef = useRef(null)
   const fileInputRef = useRef(null)
 
-  // --- API Functions (The Magic) ---
+  // --- Dynamic Loading Text Effect ---
+  useEffect(() => {
+    let interval;
+    if (isLoading) {
+      let i = 0;
+      setLoadingText(loadingMessages[0]);
+      interval = setInterval(() => {
+        i = (i + 1) % loadingMessages.length;
+        setLoadingText(loadingMessages[i]);
+      }, 2500); // Har 2.5 second mein message change hoga
+    }
+    return () => clearInterval(interval);
+  }, [isLoading])
+
+  // --- API Functions ---
 
   // 1. Text Search (Bina photo ke)
   const handleTextSearch = async () => {
     if (!foodQuery) return alert("Please enter a food name first!")
     setIsLoading(true)
     setAnalysisResult(null)
+    setPreviewUrl(null) // Hide preview if text search is used
     
     try {
       const formData = new FormData()
@@ -45,22 +74,49 @@ function App() {
       if (data.error) throw new Error(data.error)
       setAnalysisResult(data)
     } catch (error) {
-      alert("❌ Error: " + error.message)
+      alert("❌ " + error.message)
     }
     setIsLoading(false)
   }
 
-  // 2. File Upload (Gallery se)
-  const handleFileUpload = async (event) => {
+  // 2. File Upload Handler (Hold in State, don't send to API yet)
+  const handleFileUpload = (event) => {
     const file = event.target.files[0]
     if (!file) return
 
+    setSelectedFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
+    setAnalysisResult(null) // Clear old result
+    event.target.value = null // reset input
+  }
+
+  // 3. Camera Snapshot (Hold in State, don't send to API yet)
+  const takeSnapshot = () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext('2d')
+      canvasRef.current.width = videoRef.current.videoWidth
+      canvasRef.current.height = videoRef.current.videoHeight
+      context.drawImage(videoRef.current, 0, 0)
+      
+      // Convert Canvas to Blob (File format)
+      canvasRef.current.toBlob((blob) => {
+        setSelectedFile(blob)
+        setPreviewUrl(URL.createObjectURL(blob))
+        setAnalysisResult(null)
+        closeCamera()
+      }, 'image/jpeg', 0.8)
+    }
+  }
+
+  // 4. MANUAL ANALYZE SUBMIT BUTTON FUNCTION
+  const submitImageForAnalysis = async () => {
+    if (!selectedFile) return
     setIsLoading(true)
     setAnalysisResult(null)
 
     try {
       const formData = new FormData()
-      formData.append("file", file)
+      formData.append("file", selectedFile, "captured_image.jpg")
       formData.append("food_query", "Unknown (Image Upload)")
       formData.append("user_goal", userGoal)
       formData.append("mode", activeMode)
@@ -70,53 +126,29 @@ function App() {
         body: formData
       })
       const data = await response.json()
-      if (data.error) throw new Error(data.error)
-      setAnalysisResult(data)
-    } catch (error) {
-      alert("❌ Error: " + error.message)
-    }
-    
-    setIsLoading(false)
-    event.target.value = null // reset input
-  }
-
-  // 3. Camera Snapshot API Call
-  const takeSnapshot = async () => {
-    if (videoRef.current && canvasRef.current) {
-      const context = canvasRef.current.getContext('2d')
-      canvasRef.current.width = videoRef.current.videoWidth
-      canvasRef.current.height = videoRef.current.videoHeight
-      context.drawImage(videoRef.current, 0, 0)
       
-      // Convert Canvas to Blob (File format)
-      canvasRef.current.toBlob(async (blob) => {
-        closeCamera()
-        setIsLoading(true)
-        setAnalysisResult(null)
-
-        try {
-          const formData = new FormData()
-          formData.append("file", blob, "camera_capture.jpg")
-          formData.append("food_query", "Unknown (Camera Image)")
-          formData.append("user_goal", userGoal)
-          formData.append("mode", activeMode)
-
-          const response = await fetch(`${API_BASE_URL}/analyze/image/`, {
-            method: "POST",
-            body: formData
-          })
-          const data = await response.json()
-          if (data.error) throw new Error(data.error)
-          setAnalysisResult(data)
-        } catch (error) {
-          alert("❌ Error: " + error.message)
-        }
-        setIsLoading(false)
-      }, 'image/jpeg', 0.8)
+      // Handle the strict validation error from Backend
+      if (data.error) throw new Error(data.error)
+      
+      setAnalysisResult(data)
+      
+      // Clear preview after successful analysis
+      setPreviewUrl(null)
+      setSelectedFile(null)
+    } catch (error) {
+      // Backend se reject aayega toh yahan alert banega
+      alert("⚠️ " + error.message) 
     }
+    setIsLoading(false)
   }
 
-  // 4. Fetch History
+  // Clear Preview
+  const cancelPreview = () => {
+    setPreviewUrl(null)
+    setSelectedFile(null)
+  }
+
+  // 5. Fetch History
   const loadHistory = async () => {
     if (showHistory) {
       setShowHistory(false)
@@ -227,12 +259,17 @@ function App() {
         {/* --- Inputs Panels --- */}
         <div className="grid md:grid-cols-2 gap-6 relative">
           
-          {/* Loading Overlay */}
+          {/* THE NEW HEALTHY LOADING OVERLAY */}
           {isLoading && (
-            <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center border border-blue-100 shadow-2xl">
-              <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-              <h3 className="text-xl font-bold text-blue-800">AI is Analyzing...</h3>
-              <p className="text-blue-600/70 font-medium mt-1">This may take 10-20 seconds</p>
+            <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-md rounded-3xl flex flex-col items-center justify-center border border-green-100 shadow-2xl">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-green-200 rounded-full blur-xl animate-pulse"></div>
+                <Leaf className="w-14 h-14 text-green-600 relative animate-bounce" />
+              </div>
+              <h3 className="text-xl font-extrabold text-slate-800 tracking-tight text-center px-4 transition-all duration-500">
+                {loadingText}
+              </h3>
+              <p className="text-slate-500 font-medium mt-2 text-sm animate-pulse">Running health diagnostics...</p>
             </div>
           )}
 
@@ -265,8 +302,29 @@ function App() {
           </div>
         </div>
 
+        {/* --- IMAGE PREVIEW BLOCK --- */}
+        {previewUrl && (
+          <div className="bg-white p-6 rounded-3xl shadow-lg border-2 border-blue-400 animate-in fade-in slide-in-from-top-4 relative mt-6 text-center">
+            <button onClick={cancelPreview} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full hover:bg-red-100 hover:text-red-600 transition-colors">
+              <X className="w-5 h-5"/>
+            </button>
+            <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center justify-center gap-2">
+              <ImageIcon className="w-5 h-5 text-blue-500" /> Ready to Analyze {activeMode === 'food' ? 'Food' : 'Label'}
+            </h3>
+            <div className="bg-slate-100 rounded-2xl p-2 mb-6 inline-block max-w-full">
+              <img src={previewUrl} alt="Selected Preview" className="max-h-64 md:max-h-80 mx-auto rounded-xl object-contain shadow-sm" />
+            </div>
+            <button 
+              onClick={submitImageForAnalysis} 
+              className="w-full md:w-2/3 lg:w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-blue-500/30 transition-all active:scale-95 flex items-center justify-center gap-2 mx-auto"
+            >
+              <Zap className="w-6 h-6 text-yellow-400"/> START AI ANALYSIS
+            </button>
+          </div>
+        )}
+
         {/* --- AI RESULT DASHBOARD --- */}
-        {analysisResult && analysisResult.health_intelligence && (
+        {analysisResult && analysisResult.health_intelligence && !previewUrl && (
           <div className="mt-12 bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-8">
             <div className={`p-8 text-center text-white ${analysisResult.health_intelligence.rating_out_of_10 >= 8 ? 'bg-gradient-to-br from-green-500 to-emerald-700' : analysisResult.health_intelligence.rating_out_of_10 >= 5 ? 'bg-gradient-to-br from-yellow-400 to-orange-500' : 'bg-gradient-to-br from-red-500 to-rose-700'}`}>
               <h2 className="text-3xl md:text-4xl font-extrabold capitalize mb-4">{analysisResult.query_name}</h2>
@@ -352,7 +410,7 @@ function App() {
             </div>
             <canvas ref={canvasRef} className="hidden" />
             <div className="p-6 bg-slate-900 text-center">
-              <button onClick={takeSnapshot} className="w-full bg-white text-slate-900 font-bold py-4 rounded-xl hover:bg-slate-200 flex items-center justify-center gap-2"><Camera className="w-6 h-6" /> Capture & Analyze</button>
+              <button onClick={takeSnapshot} className="w-full bg-white text-slate-900 font-bold py-4 rounded-xl hover:bg-slate-200 flex items-center justify-center gap-2"><Camera className="w-6 h-6" /> Capture Image</button>
             </div>
           </div>
         </div>
