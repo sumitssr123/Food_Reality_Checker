@@ -48,7 +48,7 @@ Backend Setup
 Bash
 # Clone the repo
 git clone https://github.com/sumitssr123/Food_Reality_Checker.git
-cd backend
+
 
 # Install dependencies
 pip install -r requirements.txt
