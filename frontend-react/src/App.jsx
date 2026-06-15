@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Search, Upload, Camera, Zap, ShieldAlert, Activity, Leaf, Target, X, Focus, Flame, CheckCircle, AlertTriangle, History, ChevronRight, Loader2, Image as ImageIcon } from 'lucide-react'
 
 // Aapke Python Backend ka address
-const API_BASE_URL = "http://127.0.0.1:8000"
+const API_BASE_URL = "https://healthyfoodtracker.onrender.com"
 
 function App() {
   // --- States ---
