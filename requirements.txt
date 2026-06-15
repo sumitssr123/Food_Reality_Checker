@@ -5,3 +5,5 @@ Pillow
 google-genai
 pydantic
 python-dotenv
+SQLAlchemy
+aiosqlite
