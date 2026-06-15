@@ -46,7 +46,7 @@ def compress_image_bytes(image_bytes: bytes, mode: str) -> tuple[bytes, str]:
 class HealthScore(BaseModel):
     rating_out_of_10: float = Field(description="EXACT ALGORITHMIC SCORING. Never round off to 5.0. Output precise decimals (e.g., 9.5, 9.2, 8.9, 2.1) strictly based on the user's goal and biochemical markers. Bad food MUST be below 4.0. Nutrient-dense whole foods MUST be above 8.5.")
     rating_label: str = Field(description="Must be exactly one of: Terrible, Poor, Average, Good, Best, or Excellent.")
-    primary_benefit: str = Field(description="Highly specialized medical analysis of benefits. Mention the exact impact of high-quality protein, calcium, magnesium, or complete amino acid profiles on human organs. If it's junk food, bluntly state: 'No biological advantage, purely engineered for taste and addiction.'")
+    primary_benefit: str = Field(description="Highly specialized medical analysis of benefits. CRITICAL RULE: You MUST state any actual benefits present (e.g., 'Contains 5g of protein and calcium for bone health'). Even if it is a bad/junk product, acknowledge these nutrients FIRST, but then clearly state: 'However, despite these trace benefits, the overall product is unhealthy/not recommended because...'.")
     primary_warning: str = Field(description="MANDATORY CLINICAL FORMAT: '⚠️ If you have [Condition like Diabetes, High BP, PCOS, Fatty Liver, IBS], then you MUST avoid this because [Exact scientific mechanism of harm].'")
 
 class MacroProfile(BaseModel):
@@ -58,7 +58,7 @@ class MacroProfile(BaseModel):
 class ProFoodAnalysis(BaseModel):
     is_recognized_target: bool = Field(description="Set False ONLY if the image does not contain text/label (in ingredients mode) or recognizable food (in food mode).")
     recognition_error: str = Field(description="If is_recognized_target is False, state the exact reason here. Else 'None'.")
-    query_name: str = Field(description="Scientific or standard commercial name of the item.")
+    query_name: str = Field(description="Scientific or commercial name. CRITICAL RULE: In 'ingredients' mode, if you only see an ingredient list and NO brand packaging, DO NOT GUESS the product name (e.g., do not guess 'Tomato Ketchup'). Just output 'Analyzed Ingredient Label' or 'Packaged Food List'.")
     analyzed_quantity: str = Field(description="Exact reference frame analyzed (e.g., 'Per 100 grams'). ALL MACROS MUST BE BASED ON THIS QUANTITY.")
     macronutrients: MacroProfile
     health_intelligence: HealthScore
@@ -75,38 +75,45 @@ def analyze_food_engine(food_query: str = "Unknown", user_goal: str = "General H
         ROLE: Supreme FSSAI/FDA Toxicologist, Clinical Biochemist, and Medical Auditor.
         CURRENT USER HEALTH GOAL: "{user_goal}".
         
-        CRITICAL MANDATE: Human health depends on your accuracy. Packaged food labels intentionally hide harmful substances. Scan EVERY single character on the label image with 100% precision. Do not miss a single item.
+        🔴 IMAGE VALIDATION (CRITICAL RULE):
+        You are strictly an INGREDIENT AUDITOR. If the image provided is NOT a nutritional label, ingredient list, or food packaging with text, YOU MUST set `is_recognized_target` to false and set `recognition_error` to "Please upload a clear ingredient label or packaging text."
+        
+        CRITICAL MANDATE: Scan EVERY single character on the label image with 100% precision. 
 
         🔴 DETAILED INGREDIENT JUDGMENT PROTOCOL:
-        1. CRITICAL RED FLAGS: Search aggressively for Palm Oil, Palmolein, Hydrogenated Vegetable Oils, Maltodextrin, High Fructose Corn Syrup (HFCS), Maida (Refined Wheat Flour), Liquid Glucose, and Artificial Sweeteners/Colors.
-        2. AUTOMATIC PENALTY RULE: If ANY of the above red flags are detected, the absolute MAXIMUM health rating allowed is 3.5/10. It is a toxic corporate product. Be unforgiving.
-        3. DECODE ALL ADDICTIVE INS/E-CODES: Identify and list chemical risks in `deep_dive_details` (e.g., "INS 471/472e can compromise gut barrier integrity", "INS 319 induces cellular oxidative stress").
-        4. UNMASK COGNITIVE MARKETING: If the packaging says "Oats Biscuits" but contains mostly Maida, expose this corporate scam brutally in the `goal_alignment` section.
+        1. NO GUESSING RULE: If you are only looking at an ingredient list or nutritional table, DO NOT assume or guess what the actual product is (like 'Ketchup' or 'Oat Milk'). Just analyze the chemicals and ingredients present.
+        2. ACKNOWLEDGE TRACE BENEFITS: Even if the product is toxic, if it has protein, calcium, or vitamins, mention them in the 'primary_benefit' section before stating it's not worth the health trade-off.
+        3. CRITICAL RED FLAGS: Search aggressively for Palm Oil, Palmolein, Hydrogenated Vegetable Oils, Maltodextrin, High Fructose Corn Syrup (HFCS), Maida, Liquid Glucose, and Artificial Sweeteners/Colors.
+        4. AUTOMATIC PENALTY RULE: If ANY of the above red flags are detected, the absolute MAXIMUM health rating allowed is 3.5/10. It is a toxic corporate product.
+        5. DECODE ALL ADDICTIVE INS/E-CODES: Identify and list chemical risks in `deep_dive_details`.
         """
     else:
         prompt_text = f"""
         ROLE: Master Chief Sports Dietitian, Clinical Endocrinologist, and Human Performance Bio-Architect.
         CURRENT USER HEALTH GOAL: "{user_goal}".
 
+        🔴 IMAGE VALIDATION (CRITICAL RULE):
+        You are strictly a FOOD ANALYZER. If the image is NOT a recognizable food item, meal, or beverage, YOU MUST set `is_recognized_target` to false and set `recognition_error` to "Please upload a valid image of a food item."
+
         CRITICAL MANDATE: Evaluate this food item with absolute biochemical precision. Bad food must be called out as garbage; pristine fuel must be highly rewarded.
 
         🔴 THE MATHEMATICAL SCORING PROTOCOL:
-        Evaluate the nutritional profile out of 10.0 based on these exact biological multipliers:
-        - HIGH BIOAVAILABILITY FACTORS (+): High-quality Protein, Bioavailable Calcium, Magnesium, Zinc, High Dietary Fiber, and Clean Fats.
-        - HIGH INFLAMMATION FACTORS (-): High glycemic refined sugars, trans-fats, processed sodium levels.
+        1. ACKNOWLEDGE TRACE BENEFITS: Even if it is a junk food (like pizza/burger), if it contains protein (cheese/meat) or calcium, you MUST highlight that benefit first in the 'primary_benefit' field before concluding that the overall caloric/fat trade-off is bad.
+        2. Evaluate the nutritional profile out of 10.0 based on these exact biological multipliers:
+           - HIGH BIOAVAILABILITY FACTORS (+): High-quality Protein, Bioavailable Calcium, Magnesium, Zinc, High Dietary Fiber, and Clean Fats.
+           - HIGH INFLAMMATION FACTORS (-): High glycemic refined sugars, trans-fats, processed sodium levels.
 
         🔴 GOAL-SPECIFIC DECIMALS MATRIX (MANDATORY ADJUSTMENT):
         Shift the score strictly depending on the current active goal "{user_goal}". 
-        - Example Case (Nutrient-dense whole foods like high-grade Paneer or Eggs):
-          * If Goal == 'Build Muscle': Protein synthesis is paramount. Reward heavily -> Score it exactly around 9.5/10.
-          * If Goal == 'Clean Eating': Zero synthetic additives -> Score it exactly around 9.2/10.
-          * If Goal == 'Weight Loss': Caloric density and lipid loading must be monitored. Deduct slightly for total fat calories -> Score it exactly around 6.8/10 to 7.2/10.
-          * If Goal == 'General Health': Balance micro and macro density smoothly -> Score it exactly around 8.9/10.
+        - Example Case (Nutrient-dense whole foods like Paneer or Eggs):
+          * Goal 'Build Muscle' -> Score 9.5/10.
+          * Goal 'Clean Eating' -> Score 9.2/10.
+          * Goal 'Weight Loss' -> Score 6.8/10 to 7.2/10.
         - Example Case (Junk Food like a Burger/Pizza):
-          * If Goal == 'Weight Loss' -> Score MUST be 1.5/10 to 2.5/10.
-          * If Goal == 'Build Muscle' -> Score MUST be 5.0/10 to 5.5/10 (dirty bulk).
+          * Goal 'Weight Loss' -> Score 1.5/10 to 2.5/10.
+          * Goal 'Build Muscle' -> Score 5.0/10 to 5.5/10 (dirty bulk).
         
-        Apply this rigorous scaling algorithm to whatever item is presented. Output precise decimals (e.g., 9.2, 8.9, 2.1).
+        Apply this rigorous scaling algorithm. Output precise decimals (e.g., 9.2, 8.9, 2.1).
         """
 
     if image_bytes:
@@ -133,6 +140,7 @@ def analyze_food_engine(food_query: str = "Unknown", user_goal: str = "General H
             
             data = json.loads(response.text)
             
+            # 🟢 PROPER REJECTION LOGIC
             if not data.get("is_recognized_target", True):
                 print(f"🚫 Validation Failed: {data.get('recognition_error')}")
                 return {"error": data.get("recognition_error", "Invalid image uploaded.")}
