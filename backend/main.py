@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from io import BytesIO
 from PIL import Image
-from engine import analyze_food_engine 
+from backend.engine import analyze_food_engine 
 
 # Database Imports
 from sqlalchemy.ext.asyncio import AsyncSession
