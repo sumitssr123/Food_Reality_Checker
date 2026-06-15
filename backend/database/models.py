@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, Text
 from datetime import datetime
-from .database import Base
+from backend.database.database import Base # ✅ FIXEDPATH HERE
 
 class ScanHistory(Base):
     __tablename__ = "scan_history"

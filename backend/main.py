@@ -5,10 +5,11 @@ from io import BytesIO
 from PIL import Image
 from backend.engine import analyze_food_engine 
 
-# Database Imports
+# Database Imports (✅ FIXED PATHS HERE)
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.database import engine, Base, get_db
-from database.models import ScanHistory
+from sqlalchemy.future import select
+from backend.database.database import engine, Base, get_db
+from backend.database.models import ScanHistory
 from contextlib import asynccontextmanager
 
 # Automatically create database tables on startup
@@ -116,8 +117,6 @@ async def analyze_image(
         print(f"❌ Server Crash: {str(e)}")
         return JSONResponse(status_code=500, content={"error": f"Internal Server Error: {str(e)}"})
     
-from sqlalchemy.future import select
-
 @app.get("/history/")
 async def get_history(db: AsyncSession = Depends(get_db)):
     try:
