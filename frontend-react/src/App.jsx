@@ -4,7 +4,7 @@ import { Search, Upload, Camera, Zap, ShieldAlert, Activity, Leaf, Target, X, Fo
 // 🌟 THE MAGIC FIX: Auto-detects Localhost vs Live Server automatically!
 const API_BASE_URL = import.meta.env.DEV 
   ? "http://127.0.0.1:8000" 
-  : (import.meta.env.VITE_API_URL || "https://healthyfoodtracker.onrender.com");
+  : (import.meta.env.VITE_API_URL || "https://healthyindiatracker.onrender.com");
 
 function App() {
   // --- States ---
