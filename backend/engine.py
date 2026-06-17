@@ -111,7 +111,7 @@ def analyze_food_engine(food_query: str = "Unknown", user_goal: str = "General H
           * Goal 'Weight Loss' -> Score 6.8/10 to 7.2/10.
         - Example Case (Junk Food like a Burger/Pizza):
           * Goal 'Weight Loss' -> Score 1.5/10 to 2.5/10.
-          * Goal 'Build Muscle' -> Score 5.0/10 to 5.5/10 (dirty bulk).
+          * Goal 'Build Muscle' -> Score 2.5/10 to 3.7/10 (dirty bulk).
         
         Apply this rigorous scaling algorithm. Output precise decimals (e.g., 9.2, 8.9, 2.1).
         """

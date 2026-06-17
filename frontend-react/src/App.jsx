@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { Search, Upload, Camera, Zap, ShieldAlert, Activity, Leaf, Target, X, Focus, Flame, CheckCircle, AlertTriangle, History, ChevronRight, Loader2, Image as ImageIcon } from 'lucide-react'
 
-// Aapke Python Backend ka address
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://healthyfoodtracker.onrender.com";
+// 🌟 THE MAGIC FIX: Auto-detects Localhost vs Live Server automatically!
+const API_BASE_URL = import.meta.env.DEV 
+  ? "http://127.0.0.1:8000" 
+  : (import.meta.env.VITE_API_URL || "https://healthyfoodtracker.onrender.com");
 
 function App() {
   // --- States ---
@@ -222,7 +224,7 @@ function App() {
             <select 
               value={userGoal}
               onChange={(e) => setUserGoal(e.target.value)}
-              className="appearance-none w-full p-4 border border-slate-200 rounded-xl bg-slate-50 hover:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700 cursor-pointer"
+              className="w-full p-4 border border-slate-200 rounded-xl bg-slate-50 hover:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700 cursor-pointer"
             >
               <option value="General Health">Overall Health & Longevity</option>
               <option value="Weight Loss">Weight Loss (Fat Burning)</option>
@@ -231,7 +233,7 @@ function App() {
             </select>
           </div>
         </header>
-
+         
         {/* --- History Dashboard --- */}
         {showHistory && (
           <div className="bg-slate-800 text-white p-6 rounded-3xl shadow-xl animate-in fade-in slide-in-from-top-4">

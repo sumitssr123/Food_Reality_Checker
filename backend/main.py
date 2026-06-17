@@ -29,12 +29,12 @@ app.add_middleware(
 )
 
 # HELPER FUNCTION: To save data into the database
-async def save_to_db(db: AsyncSession, query_type: str, goal: str, data: dict):
+async def save_to_db(db: AsyncSession, query_type: str, user_goal: str, data: dict):
     try:
         new_scan = ScanHistory(
             query_type=query_type,
             food_name=data.get("query_name", "Unknown"),
-            health_goal=goal,
+            health_goal=user_goal,
             calories=data.get("macronutrients", {}).get("calories", 0),
             protein_g=data.get("macronutrients", {}).get("protein_g", 0.0),
             health_rating=data.get("health_intelligence", {}).get("rating_out_of_10", 0.0),
@@ -48,26 +48,23 @@ async def save_to_db(db: AsyncSession, query_type: str, goal: str, data: dict):
         print(f"⚠️ Warning: Could not save to database. Error: {e}")
 
 @app.get("/analyze/text/")
-async def analyze_text(food_name: str, goal: str = "General Health", mode: str = "food", db: AsyncSession = Depends(get_db)):
+async def analyze_text(food_name: str, user_goal: str = "General Health", mode: str = "food", db: AsyncSession = Depends(get_db)):
     try:
-        data = analyze_food_engine(food_query=food_name, user_goal=goal, mode=mode)
+        data = analyze_food_engine(food_query=food_name, user_goal=user_goal, mode=mode)
         
-        # 🟢 FIX 1: Send exact JSON format React expects
         if "error" in data: 
             return JSONResponse(status_code=400, content={"error": data["error"]})
         
-        # Save to DB asynchronously
-        await save_to_db(db, "text", goal, data)
+        await save_to_db(db, "text", user_goal, data)
         return data
     except Exception as e:
-        # 🟢 FIX 2: Prevent 500 crashes by safely returning the error
         return JSONResponse(status_code=500, content={"error": f"Server Error: {str(e)}"})
 
 @app.post("/analyze/image/")
 async def analyze_image(
-    file: UploadFile = File(None), # 🟢 YAHAN FIX HAI: Made file optional (None) so Text Search works!
+    file: UploadFile = File(None), 
     food_query: str = Form("Unknown Image Upload"),
-    goal: str = Form("General Health"), 
+    user_goal: str = Form("General Health"), # 🟢 FIX: Exactly matches React's formData.append("user_goal")
     mode: str = Form("food"), 
     db: AsyncSession = Depends(get_db)
 ):
@@ -75,7 +72,6 @@ async def analyze_image(
         safe_image_bytes = None
         mime_type = None
 
-        # 🟢 YAHAN FIX HAI: Logic check agar file aayi hai ya nahi
         if file is not None and file.filename != "":
             print(f"\n--- NEW IMAGE UPLOAD STARTED ---")
             raw_image_bytes = await file.read()
@@ -95,22 +91,20 @@ async def analyze_image(
         else:
             print(f"\n--- NEW TEXT SEARCH STARTED: {food_query} ---")
 
-        # Pass data to the engine (Works for both Text and Image now)
+        # Pass data to the engine
         data = analyze_food_engine(
             food_query=food_query, 
-            user_goal=goal, 
+            user_goal=user_goal, 
             image_bytes=safe_image_bytes, 
             mime_type=mime_type, 
             mode=mode
         )
         
-        # Handle Engine Errors Gracefully
         if "error" in data: 
             return JSONResponse(status_code=400, content={"error": data["error"]})
             
-        # Save to DB asynchronously
         query_type = "image" if safe_image_bytes else "text"
-        await save_to_db(db, query_type, goal, data)
+        await save_to_db(db, query_type, user_goal, data)
         return data
         
     except Exception as e:
@@ -120,7 +114,6 @@ async def analyze_image(
 @app.get("/history/")
 async def get_history(db: AsyncSession = Depends(get_db)):
     try:
-        # Database se latest 10 scans nikalna (descending order mein)
         result = await db.execute(select(ScanHistory).order_by(ScanHistory.id.desc()).limit(10))
         scans = result.scalars().all()
         
