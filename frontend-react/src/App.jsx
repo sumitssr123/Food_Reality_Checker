@@ -199,6 +199,15 @@ function App() {
         
         {/* --- Header Section --- */}
         <header className="text-center mb-10 relative">
+          
+          <div className="absolute left-0 top-1 hidden sm:block animate-in fade-in slide-in-from-left-4 duration-500">
+            <div className="bg-white/80 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm border border-slate-200 hover:shadow-md transition-all cursor-default">
+              <p className="text-xs font-extrabold text-slate-500 tracking-wide">
+                Created by <span className="text-blue-600">Sumit Singh</span> <span className="text-slate-400 font-medium">(IIITL)</span>
+              </p>
+            </div>
+          </div>
+
           <div className="absolute right-0 top-0">
             <button 
               onClick={loadHistory}
